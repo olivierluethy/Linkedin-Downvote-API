@@ -95,6 +95,65 @@ switch ($route) {
         break;
 
 
+        /**
+ * -------------------------------------------------------
+ * POST /index.php?route=undislike
+ * Body: { "post_id": "...", "client_id": "..." }
+ * -------------------------------------------------------
+ */
+case 'undislike':
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['error' => 'Method not allowed']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $post_id = $input['post_id'] ?? null;
+    $client_id = $input['client_id'] ?? null;
+
+    if (!$post_id || !$client_id) {
+        http_response_code(400);
+        echo json_encode(['error' => 'post_id and client_id required']);
+        exit;
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        // Prüfen, ob der Dislike existiert
+        $check = $pdo->prepare("SELECT 1 FROM dislikes WHERE post_id=? AND client_id=?");
+        $check->execute([$post_id, $client_id]);
+        if (!$check->fetch()) {
+            $pdo->rollBack();
+            echo json_encode(['success' => false, 'message' => 'Not disliked']);
+            exit;
+        }
+
+        // Dislike entfernen
+        $pdo->prepare("DELETE FROM dislikes WHERE post_id=? AND client_id=?")
+            ->execute([$post_id, $client_id]);
+
+        // Zähler verringern (nur wenn > 0)
+        $pdo->prepare("
+            UPDATE post_dislike_count 
+            SET dislike_count = GREATEST(dislike_count - 1, 0) 
+            WHERE post_id = ?
+        ")->execute([$post_id]);
+
+        // Falls Zähler 0 → Zeile löschen (optional)
+        $pdo->prepare("DELETE FROM post_dislike_count WHERE post_id=? AND dislike_count = 0")
+            ->execute([$post_id]);
+
+        $pdo->commit();
+
+        echo json_encode(['success' => true, 'message' => 'Dislike removed']);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    break;
     /**
      * -------------------------------------------------------
      * GET /index.php?route=dislike-count&post_id=...
