@@ -1,0 +1,9 @@
+# Ignore MySQL data files
+db_data/
+*.pem
+*.dblwr
+*.ibd
+*.ibdata*
+*.binlog*
+*.sock
+*.cnf
