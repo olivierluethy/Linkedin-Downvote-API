@@ -1,3 +1,53 @@
+# LinkedIn Downvote API
+
+A small PHP + MySQL backend that stores "dislike" (downvote) votes for LinkedIn
+feed posts, exposed as a simple JSON API. It is the server-side counterpart to a
+browser extension / content script that adds a downvote button to the LinkedIn
+feed and reads the aggregated counts back.
+
+## Features
+
+- **Record a dislike** for a post, deduplicated per client (`POST ?route=dislike`).
+- **Read dislike counts** back so the extension can display them.
+- **CORS-enabled** JSON API (including private-network preflight) so it can be
+  called from `linkedin.com`.
+- Persistent storage in MySQL with a unique constraint per `(post_id, client_id)`
+  and an aggregated `post_dislike_count` table.
+
+## Tech
+
+- PHP (PDO, `vlucas/phpdotenv`, `guzzlehttp/guzzle`)
+- MySQL 8
+- Docker Compose (PHP + Apache, MySQL, phpMyAdmin)
+
+## Run
+
+The database credentials are read from a `.env` file (`DB_HOST`, `DB_NAME`,
+`DB_USER`, `DB_PASS`) — the committed values are the local Docker development
+defaults, not production secrets.
+
+```bash
+docker compose up --build
+```
+
+- API: http://localhost:8080/index.php
+- phpMyAdmin: http://localhost:8081
+
+The schema is defined in `init.sql`. Endpoints are routed via the `?route=`
+query parameter in `index.php`.
+
+## API
+
+| Method | Route                         | Description                          |
+| ------ | ----------------------------- | ------------------------------------ |
+| `POST` | `/index.php?route=dislike`    | Record a dislike for a post          |
+
+Request body (JSON): `{ "post_id": "urn:li:activity:...", "client_id": "..." }`
+
+---
+
+## Development notes (DE)
+
 Herausfoderung waren vor allem bei der automatisation, den so einfach ging das nicht weil damit der Feed immer andere inhalte anzeigt, muss man mit dem Feed interagieren, darauf eine reaktion abgeben, den ansonsten kann es endlos immer das gleiche anzeigen.
 
 For allem muss man immer sehr vielen Leuten folgen, damit immer ganz viele unterschiedliche Posts einem angezeigt werden.
